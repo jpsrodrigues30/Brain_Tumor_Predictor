@@ -5,7 +5,7 @@ João Paulo de Souza Rodrigues
 
 Este repositório contém um pipeline completo para **classificação de tumores cerebrais em imagens de ressonância magnética (RM)** utilizando **deep learning** com **MobileNetV2** e **transfer learning**.
 
-## Para uma documentação mais detalhada, por favor verificar o relatório Trabalho_Final_IA_CD_Aplicadas_a_Saude.docx. Neste documento está explicado detalhadamente o que foi realizado em cada uma das etapas abaixo e porquê determinados métodos foram utilizados. Esse arquivo README estará mais focado em resumir breviamente o que foi feito e auxiliar na execução local do projeto.
+### Para uma documentação mais detalhada, por favor verificar o relatório Trabalho_Final_IA_CD_Aplicadas_a_Saude.docx. Neste documento está explicado detalhadamente o que foi realizado em cada uma das etapas abaixo e porquê determinados métodos foram utilizados. Esse arquivo README estará mais focado em resumir breviamente o que foi feito e auxiliar na execução local do projeto.
 
 O modelo construído nesse projeto será responsável por analisar as imagens de RM cerebral (Sem a utilização de qualquer dado clínico) e classificar as imagens em 4 categorias:
  - Glioma
