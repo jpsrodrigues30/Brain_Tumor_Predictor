@@ -5,7 +5,13 @@ João Paulo de Souza Rodrigues
 
 Este repositório contém um pipeline completo para **classificação de tumores cerebrais em imagens de ressonância magnética (RM)** utilizando **deep learning** com **MobileNetV2** e **transfer learning**.
 
-### Para uma documentação mais detalhada, por favor verificar o relatório Trabalho_Final_IA_CD_Aplicadas_a_Saude.docx. Neste documento está explicado detalhadamente o que foi realizado em cada uma das etapas abaixo e porquê determinados métodos foram utilizados. Esse arquivo README estará mais focado em resumir breviamente o que foi feito e auxiliar na execução local do projeto.
+**Para uma documentação mais detalhada, consulte o relatório `Trabalho_Final_IA_CD_Aplicadas_a_Saude.docx`.**
+**Nesse documento estão explicados em profundidade:
+- as etapas do pipeline,
+- as decisões de modelagem,
+- as justificativas para a escolha dos métodos e métricas.
+
+**Este `README` tem como foco resumir o fluxo do projeto e orientar a execução local.**
 
 O modelo construído nesse projeto será responsável por analisar as imagens de RM cerebral (Sem a utilização de qualquer dado clínico) e classificar as imagens em 4 categorias:
  - Glioma
@@ -53,7 +59,7 @@ Brain_Tumor_Predictor/
 
 ## 2. Instalação 
 
-Clone este repositório na pasta desejada e entre no diretório da aplicação atráves da execução desses comandos
+Clone este repositório na pasta desejada e entre no diretório da aplicação através da execução desses comandos
 
 ### Powershell
 ```bash
@@ -84,17 +90,10 @@ pip install -r requirements.txt
 
 Para essa etapa, é necessário conter uma conta no portal Kaggle. Caso ainda não tenha, crie uma através do link https://www.kaggle.com/account/login?phase=startRegisterTab&returnUrl=%2Fdatasets%2Fmasoudnickparvar%2Fbrain-tumor-mri-dataset
 
-Depois de criado, vá nas configurações do seu perfil e crie uma novo API Token. Assim que for criado, deve aparecer um popup similar a imagem abaixo
-![alt text](image.png)
+Depois de criado, vá nas configurações do seu perfil e crie um novo API Token. Assim que for criado, deve aparecer um popup similar a imagem abaixo
+![alt text](assets/image.png)
 
-Copie o API Token gerado (Primeiro campo do popup) e crie um arquivo novo dentro do repositório
-
-### Powershell
-```bash
-mkdir kaggle.json
-```
-
-Depois de criado, edite o arquivo com o seu nome de usuário no Kaggle e o API Token récem coletado:
+Salve o API Token gerado (Primeiro campo do popup) e crie um arquivo chamado kaggle.json na raiz do repositório e insira o seguinte conteúdo:
 
 ```json
 {"username":"username","key":"token_api"}
@@ -124,6 +123,7 @@ python src/pre_processing.py
 ```
 
 Exemplo de como a estrutura de arquivos dentro da pasta "dataset" deve ficar nesse momento:
+```text
 dataset/
 ├── raw/
 │   ├── Training/...
@@ -142,6 +142,7 @@ dataset/
         ├── meningioma/*.npy
         ├── notumor/*.npy
         └── pituitary/*.npy
+```
 
 ## 5. Treinamento do modelo
 ### Arquitetura do modelo utilizada:
@@ -168,18 +169,22 @@ python src/brain_tumor_trainer.py
 ## 6. Avaliação do modelo
 Modelo treinado salvo no diretório:
 
+```text
 trained_model/
 ├── model.keras       # modelo Keras salvo
 └── classes.txt       # mapeamento de índices -> nomes de classes
+```
 
 Nessa etapa será realizada a avaliação do desempenho do modelo sobre o conjunto de teste, um grupo de dados separado e completamente independente do conjunto utilizado no treinamento e validação do modelo na etapa anterior. Os arquivos utilizados aqui podem ser encontrados no seguinte diretório:
+```text
 dataset/normalized/Testing/
     ├── glioma/*.npy
     ├── meningioma/*.npy
     ├── notumor/*.npy
     └── pituitary/*.npy
+```
 
-Esses dados, diferentemente dos dados de treianmento, não sofreram data augmentation.
+Esses dados, diferentemente dos dados de treinamento, não sofreram data augmentation.
 
 ### Métricas calculadas:
  - Acurácia
@@ -193,18 +198,21 @@ Esses dados, diferentemente dos dados de treianmento, não sofreram data augment
  - Visualização 2D com t-SNE dos embeddings internos
 
 Todas essas métricas/gráficos são salvas dentro da pasta results
+```text
 results
     ├── confusion_matrix_test.png       # matriz de confusão
     ├── metrics_test_first_run.txt      # arquivo .TXT com os valores registrados para cada uma das métricas de desempenho
     ├── roc_curves_test.png             # curvas ROC e AUC
-    ├── training_results_first_run.txt  # arquivo .TXT com os resultados do treinamento do modelo
+    ├── training_results.txt  # arquivo .TXT com os resultados do treinamento do modelo
     └── tsne_embeddings_test.png        # gráfico 2D com t-SNE
+```
 
 ```bash
 python src/brain_tumor_evaluator.py
 ```
 
 ## 7. Resultados Obtidos
+```text
 === MÉTRICAS GERAIS (TESTE) ===
 Acurácia:  0.8841
 Precisão:  0.8827
@@ -220,7 +228,7 @@ Matriz de confusão:
  [  4   8   1 287]]
 Classes:
 ['glioma', 'meningioma', 'notumor', 'pituitary']
-
-![alt text](image-1.png)
-![alt text](image-2.png)
-![alt text](image-3.png)
+```
+![alt text](assets/image-1.png)
+![alt text](assets/image-2.png)
+![alt text](assets/image-3.png)
