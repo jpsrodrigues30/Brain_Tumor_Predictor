@@ -19,7 +19,7 @@ O modelo construído nesse projeto será responsável por analisar as imagens de
  - Pituitária
  - Sem tumor (Cérebro saudável)
 
-> ⚠️ Observação: Por padrão, a pasta `dataset/` e o ambiente virtual não são versionados (`.gitignore`). Para executar o pipeline localmente, é necessário baixar o dataset e recriar a estrutura de diretórios descrita abaixo.
+> ⚠️ Observação: Por padrão, a pasta `data/` e o ambiente virtual não são versionados (`.gitignore`). Para executar o pipeline localmente, é necessário baixar o dataset e recriar a estrutura de diretórios descrita abaixo.
 
 ## 🔧 Tecnologias principais
 
@@ -100,7 +100,7 @@ Salve o API Token gerado (Primeiro campo do popup) e crie um arquivo chamado kag
 {"username":"username","key":"token_api"}
 ```
 
-Com isso feito, execute o arquivo get_data.py para fazer o download do dataset. Por padrão, os dados baixados serão armazenados dentro do diretório dataset/raw:
+Com isso feito, execute o arquivo get_data.py para fazer o download do dataset. Por padrão, os dados baixados serão armazenados dentro do diretório data/raw:
 
 ```bash
 python src/get_data.py
@@ -115,17 +115,17 @@ Nessa etapa, será executado o arquivo responsável pelo pré-processamento e da
  - Redimensionamento das imagens (224x224);
  - Aplicação do CLAHE;
  - Normalização com z-score, com reescala para [0,1];
- - Salvar as imagens "limpas" (pré-normalização) dentro da pasta "dataset/clean" ;
+ - Salvar as imagens "limpas" (pré-normalização) dentro da pasta "data/clean" ;
  - Realização de data augmentation no conjunto de treino;
- - Salvar os imagens normalizadas, que serão utilizadas no treinamento, no formato .npy, dentro do diretório "dataset/normalized".
+ - Salvar os imagens normalizadas, que serão utilizadas no treinamento, no formato .npy, dentro do diretório "data/normalized".
 
 ```bash
 python src/pre_processing.py
 ```
 
-Exemplo de como a estrutura de arquivos dentro da pasta "dataset" deve ficar nesse momento:
+Exemplo de como a estrutura de arquivos dentro da pasta "data" deve ficar nesse momento:
 ```text
-dataset/
+data/
 ├── raw/
 │   ├── Training/...
 │   └── Testing/...
@@ -178,7 +178,7 @@ trained_model/
 
 Nessa etapa será realizada a avaliação do desempenho do modelo sobre o conjunto de teste, um grupo de dados separado e completamente independente do conjunto utilizado no treinamento e validação do modelo na etapa anterior. Os arquivos utilizados aqui podem ser encontrados no seguinte diretório:
 ```text
-dataset/normalized/Testing/
+data/normalized/Testing/
     ├── glioma/*.npy
     ├── meningioma/*.npy
     ├── notumor/*.npy
