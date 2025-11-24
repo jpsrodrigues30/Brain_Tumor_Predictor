@@ -91,7 +91,8 @@ pip install -r requirements.txt
 Para essa etapa, é necessário conter uma conta no portal Kaggle. Caso ainda não tenha, crie uma através do link https://www.kaggle.com/account/login?phase=startRegisterTab&returnUrl=%2Fdatasets%2Fmasoudnickparvar%2Fbrain-tumor-mri-dataset
 
 Depois de criado, vá nas configurações do seu perfil e crie um novo API Token. Assim que for criado, deve aparecer um popup similar a imagem abaixo
-![alt text](assets/image.jpg)
+
+![API Token do Kagglehub](assets/image.jpg)
 
 Salve o API Token gerado (Primeiro campo do popup) e crie um arquivo chamado kaggle.json na raiz do repositório e insira o seguinte conteúdo:
 
@@ -229,6 +230,7 @@ Matriz de confusão:
 Classes:
 ['glioma', 'meningioma', 'notumor', 'pituitary']
 ```
-![alt text](assets/image-1.jpg)
-![alt text](assets/image-2.jpg)
-![alt text](assets/image-3.jpg)
+
+![Matriz de confusão](assets/image-1.jpg)
+![Curvas ROC por classe](assets/image-2.jpg)
+![t-SNE dos embeddings](assets/image-3.jpg)

@@ -114,9 +114,9 @@ class BrainTumorEvaluator:
         Evaluates the testing set and generates performance metrics
         - Accuracy, precision, recall, f1
         - Mcc, kappa
-        - Confunsion matrix (jpg)
-        - RCO curves per class (jpg)
-        - Embeddigs t-SNE (jpg)
+        - Confunsion matrix (png)
+        - RCO curves per class (png)
+        - Embeddigs t-SNE (png)
         - metrics_test.txt with everything
         """
 
@@ -157,7 +157,7 @@ class BrainTumorEvaluator:
         plt.xlabel("Predito")
         plt.ylabel("Real")
         plt.tight_layout()
-        cm_path = os.path.join(out_dir, "confusion_matrix_test.jpg")
+        cm_path = os.path.join(out_dir, "confusion_matrix_test.png")
         plt.savefig(cm_path, dpi=200)
         plt.close()
 
@@ -177,7 +177,7 @@ class BrainTumorEvaluator:
         plt.legend(loc="lower right")
         plt.title("Curvas ROC por classe (Teste)")
         plt.tight_layout()
-        roc_path = os.path.join(out_dir, "roc_curves_test.jpg")
+        roc_path = os.path.join(out_dir, "roc_curves_test.png")
         plt.savefig(roc_path, dpi=200)
         plt.close()
 
@@ -214,7 +214,7 @@ class BrainTumorEvaluator:
         plt.title("t-SNE dos embeddings (Teste)")
         plt.legend(loc="best", fontsize=8)
         plt.tight_layout()
-        tsne_path = os.path.join(out_dir, "tsne_embeddings_test.jpg")
+        tsne_path = os.path.join(out_dir, "tsne_embeddings_test.png")
         plt.savefig(tsne_path, dpi=200)
         plt.close()
 
