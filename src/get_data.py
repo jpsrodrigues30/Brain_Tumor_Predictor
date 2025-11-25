@@ -7,7 +7,7 @@ path = kagglehub.dataset_download("masoudnickparvar/brain-tumor-mri-dataset")
 
 print("Path to dataset files (cache):", path)
 
-project_data_path = os.path.join(os.getcwd(), "data", "raw")
+project_data_path = os.path.join(os.getcwd(), "dataset", "raw")
 
 os.makedirs(project_data_path, exist_ok=True)
 
