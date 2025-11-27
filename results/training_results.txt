@@ -1,0 +1,31 @@
+=== Dataset info ===
+Treino: (11200, 224, 224, 3)
+Val:    (2800, 224, 224, 3)
+Classes: ['glioma', 'meningioma', 'notumor', 'pituitary']
+
+=== Training history (por época) ===
+Epoch 1: loss=1.1661 acc=0.5017 val_loss=0.7044 val_acc=0.7539 lr=0.000100
+Epoch 2: loss=0.6717 acc=0.7436 val_loss=0.5211 val_acc=0.8239 lr=0.000100
+Epoch 3: loss=0.5357 acc=0.8017 val_loss=0.4472 val_acc=0.8496 lr=0.000100
+Epoch 4: loss=0.4721 acc=0.8254 val_loss=0.4063 val_acc=0.8546 lr=0.000100
+Epoch 5: loss=0.4366 acc=0.8401 val_loss=0.3772 val_acc=0.8696 lr=0.000100
+Epoch 6: loss=0.4026 acc=0.8552 val_loss=0.3561 val_acc=0.8721 lr=0.000100
+Epoch 7: loss=0.3868 acc=0.8600 val_loss=0.3428 val_acc=0.8804 lr=0.000100
+Epoch 8: loss=0.3682 acc=0.8687 val_loss=0.3272 val_acc=0.8850 lr=0.000100
+Epoch 9: loss=0.3500 acc=0.8743 val_loss=0.3155 val_acc=0.8864 lr=0.000100
+Epoch 10: loss=0.3373 acc=0.8767 val_loss=0.3055 val_acc=0.8911 lr=0.000100
+Epoch 11: loss=0.3288 acc=0.8840 val_loss=0.2989 val_acc=0.8914 lr=0.000100
+Epoch 12: loss=0.3175 acc=0.8871 val_loss=0.2911 val_acc=0.8946 lr=0.000100
+Epoch 13: loss=0.3085 acc=0.8930 val_loss=0.2842 val_acc=0.8989 lr=0.000100
+Epoch 14: loss=0.2990 acc=0.8924 val_loss=0.2792 val_acc=0.9004 lr=0.000100
+Epoch 15: loss=0.2964 acc=0.8944 val_loss=0.2715 val_acc=0.9021 lr=0.000100
+Epoch 16: loss=0.2899 acc=0.9000 val_loss=0.2687 val_acc=0.9021 lr=0.000100
+Epoch 17: loss=0.2867 acc=0.8987 val_loss=0.2625 val_acc=0.9068 lr=0.000100
+Epoch 18: loss=0.2750 acc=0.9045 val_loss=0.2582 val_acc=0.9064 lr=0.000100
+Epoch 19: loss=0.2722 acc=0.9038 val_loss=0.2555 val_acc=0.9075 lr=0.000100
+Epoch 20: loss=0.2691 acc=0.9025 val_loss=0.2504 val_acc=0.9107 lr=0.000100
+Epoch 21: loss=0.2610 acc=0.9090 val_loss=0.2468 val_acc=0.9114 lr=0.000100
+Epoch 22: loss=0.2587 acc=0.9092 val_loss=0.2473 val_acc=0.9111 lr=0.000100
+Epoch 23: loss=0.2558 acc=0.9082 val_loss=0.2442 val_acc=0.9118 lr=0.000100
+Epoch 24: loss=0.2542 acc=0.9118 val_loss=0.2379 val_acc=0.9139 lr=0.000100
+Epoch 25: loss=0.2496 acc=0.9135 val_loss=0.2364 val_acc=0.9154 lr=0.000100

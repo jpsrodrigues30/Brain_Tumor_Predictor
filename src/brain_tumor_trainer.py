@@ -1,52 +1,46 @@
+from gc import callbacks
 import os
 import numpy as np
+import random
 from glob import glob
 from typing import Tuple, List
 import tensorflow as tf
-from sklearn.metrics import (
-    accuracy_score,
-    precision_recall_fscore_support,
-    confusion_matrix,
-    matthews_corrcoef,
-    cohen_kappa_score,
-    roc_curve,
-    auc
-)
-from sklearn.manifold import TSNE
-import matplotlib
-matplotlib.use("Agg") 
-import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from sklearn.model_selection import train_test_split
+import traceback
 
-
-class BrainTumorEvaluator:
+class BrainTumorTrainer:
     def __init__(
-        self,
-        test_path: str,
-        model_dir: str,
-        batch_size: int = 32,
-        seed: int = 42
+            self,
+            train_path: str,
+            # input_size: Tuple[int, int] = [256, 256],
+            input_size: Tuple[int, int] = [224, 224],
+            batch_size: int = 32,
+            seed: int = 42
     ):
         """
-        test_path: directory with the .npy files reserved for testing
-        model_dir: directory with the trained model
+        train_path: Directory with the normalized .npy files [0,1] for training
+        test_path: Directory with the normalized .npy files [0,1] for testing
         """
-        self.test_path = test_path
-        self.model_dir = model_dir
+        self.train_path = train_path
+        self.input_size = input_size
         self.batch_size = batch_size
         self.seed = seed
-
+        random.seed(seed)
         np.random.seed(seed)
         tf.random.set_seed(seed)
 
-        self.class_names: List[str] = []
+        self.class_names = []
         self.model = None
-
-        self.X_test = None
-        self.y_test = None
-
-    def _load_split_data(self, base_directory: str) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+        self.history = None
+        self.X_train = self.X_val = None
+        self.y_train = self.y_val = None
+    
+    def _load_split_data(self, base_directory: str) -> Tuple[np.ndarray, np.ndarray, List[str]] :
         """
-        Get the testing data
+        Load all .npy images from base_directory
         """
         class_names = sorted([
             d for d in os.listdir(base_directory)
@@ -55,194 +49,285 @@ class BrainTumorEvaluator:
 
         X_list = []
         y_list = []
+        total_count = 0
 
         for idx, cls in enumerate(class_names):
             cls_path = os.path.join(base_directory, cls)
-            npy_files = glob(os.path.join(cls_path, "*.npy"))
 
-            for f in npy_files:
-                arr = np.load(f) 
+            # Get all all files that ends with .npy from the class directory
+            img_files = glob(os.path.join(cls_path, "*.npy"))
+
+            print(f"[DEBUG] classe {cls} -> {len(img_files)} amostras")
+
+            for img in img_files:
+                arr = np.load(img) # 
+                # Saves the image in the array, alongside with its label
                 X_list.append(arr)
                 y_list.append(idx)
+                total_count+=1
+        
+            print(f"[DEBUG] total acumulado até agora: {total_count}")
+
+        print("[DEBUG] empilhando tudo em memória com np.stack agora... isso pode demorar")
 
         X = np.stack(X_list, axis=0).astype("float32")
         y = np.array(y_list, dtype=np.int32)
 
+        print(f"[DEBUG] shape final de X: {X.shape}, y: {y.shape}")
         return X, y, class_names
-
-    def _make_dataset(self, X, y):
+    
+    def load_data(self, val_size: float = 0.2):
         """
-        Create a new dataset for evaluation
-        """
-        ds = tf.data.Dataset.from_tensor_slices((X, y))
+        Load training/validation data from self.train_path
 
+        val_size: Fraction of the data that will be used for validation
+        """
+
+        X, y, class_names = self._load_split_data(self.train_path)
+        self.class_names = class_names
+
+        # Ensures that each class will appear proportionally (stratified)
+        X_train, X_val, y_train, y_val = train_test_split(
+            X,
+            y,
+            test_size = val_size,
+            random_state=self.seed,
+            stratify=y
+        )
+
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_val   = X_val
+        self.y_val   = y_val
+
+        print(f"Treino: {self.X_train.shape}, Val: {self.X_val.shape}")
+        print(f"Classes: {self.class_names}")
+
+    def _make_dataset(self, X, y, shuffle=True):
+        """
+        Creates new dataset with
+        - Scale converion from [0,1] -> [-1,1] (Scale expected by MobileNetV2)
+        - Batch size
+        - Prefetch
+        """
+        ds = tf.data.Dataset.from_tensor_slices((X,y))
+
+        if shuffle:
+            ds = ds.shuffle(buffer_size=len(X), seed=self.seed)
+        
         def preprocess(x, label):
-            x = (x * 2.0) - 1.0 
+            x=(x*2.0)-1.0 # Scale conversion
             return x, label
-
+        
         ds = ds.map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
         return ds
-
-    def load_test_data(self):
+    
+    def build_model(self, lr: float = 1e-04, train_base: bool = False, fine_tune: bool = False):
         """
-        Loads everything present in the testing directory
+        Creates new MobileNetV2 model pre-trained
         """
-        X, y, class_names = self._load_split_data(self.test_path)
-        self.X_test = X
-        self.y_test = y
-       
-        print(f"Teste: {self.X_test.shape}")
-        print(f"Classes detectadas no diretório de teste: {class_names}")
+        num_classes = len(self.class_names)
 
-    def load_model(self):
-        """
-        Loads the trained model + labels used for classification
-        """
-        classes_path = os.path.join(self.model_dir, "classes.txt")
-        with open(classes_path, "r", encoding="utf-8") as f:
-            self.class_names = [line.strip() for line in f.readlines()]
+        base_model = MobileNetV2(
+            input_shape=(self.input_size[0], self.input_size[1],3),
+            include_top=False,
+            weights="imagenet"
+        )
 
-        model_path = os.path.join(self.model_dir, "model.keras")
-        self.model = tf.keras.models.load_model(model_path)
+        # Frozen training base
+        base_model.trainable=train_base
 
+        inputs = layers.Input(
+            shape=(self.input_size[0], self.input_size[1], 3),
+            name="input_image"
+        )
+
+        x = base_model(inputs, training=False)
+        x = layers.GlobalAveragePooling2D()(x)
+        x = layers.Dropout(0.2)(x)
+        outputs = layers.Dense(num_classes, activation="softmax")(x)
+
+        model = models.Model(inputs, outputs, name="BrainTumorMobileNetV2")
+
+        if fine_tune:
+            fine_tune_at_layer = 100 
+            for layer_idx, layer in enumerate(model.layers[1].layers):  
+                if layer_idx >= fine_tune_at_layer:
+                    layer.trainable = True
+                else:
+                    layer.trainable = False
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+        model.compile(
+            optimizer=optimizer,
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"]
+        )
+
+        self.model = model
         self.model.summary()
-        print(f"Classes carregadas do modelo: {self.class_names}")
 
-    def evaluate(self, out_dir: str = "results"):
+    def train(self, patience: int = 5, min_lr: float = 1e-6, epochs: int = 50):
         """
-        Evaluates the testing set and generates performance metrics
-        - Accuracy, precision, recall, f1
-        - Mcc, kappa
-        - Confunsion matrix (png)
-        - RCO curves per class (png)
-        - Embeddigs t-SNE (png)
-        - metrics_test.txt with everything
+        Treino com EarlyStopping (para cedo quando overfit começar)
+        e ReduceLROnPlateau (diminui LR quando validação estagna).
         """
+        print("Starting training...")
+        train_ds = self._make_dataset(self.X_train, self.y_train, shuffle=True)
+        print("Starting validation...")
+        val_ds   = self._make_dataset(self.X_val,   self.y_val,   shuffle=False)
 
+        callbacks = [
+            EarlyStopping(
+                monitor="val_loss",
+                patience=patience,
+                restore_best_weights=True
+            ),
+            ReduceLROnPlateau(
+                monitor="val_loss",
+                factor=0.5,
+                patience=max(1, patience // 2),
+                min_lr=min_lr
+            )
+        ]
+
+        print("Testing one batch from train_ds...")
+        for batch_x, batch_y in train_ds.take(1):
+            print("Batch X shape:", batch_x.shape)
+            print("Batch y shape:", batch_y.shape)
+        print("Batch OK, calling model.fit...")
+
+
+        print("About to call model.fit...")
+        self.history = self.model.fit(
+            train_ds,
+            validation_data=val_ds,
+            epochs=epochs,
+            callbacks=callbacks,
+            verbose=1
+        )
+        print("model.fit finished")
+
+    def _save_results(self):
+        """
+        Salva o histórico de execução em results/training_results.txt.
+        Se ainda não houve treino (self.history == None), salva só info do dataset.
+        """    
+        os.makedirs("results", exist_ok=True)
+        out_path = os.path.join("results", "training_results.txt")
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write("=== Dataset info ===\n")
+            if self.X_train is not None:
+                f.write(f"Treino: {self.X_train.shape}\n")
+            else:
+                f.write("Treino: N/A\n")
+
+            if self.X_val is not None:
+                f.write(f"Val:    {self.X_val.shape}\n")
+            else:
+                f.write("Val:    N/A\n")
+
+            f.write(f"Classes: {self.class_names}\n\n")
+
+            if self.history is None:
+                f.write("=== Training history ===\n")
+                f.write("Nenhum histórico disponível (modelo não treinado ainda).\n")
+                print(f"Histórico salvo em {out_path} (sem history)")
+                return
+
+            hist = self.history.history
+
+            loss_list        = hist.get("loss",        [])
+            acc_list         = hist.get("accuracy",    hist.get("acc",        []))
+            val_loss_list    = hist.get("val_loss",    [])
+            val_acc_list     = hist.get("val_accuracy",hist.get("val_acc",    []))
+            lr_history       = hist.get("lr",          hist.get("learning_rate", None))
+
+            f.write("=== Training history (por época) ===\n")
+            num_epochs_run = len(loss_list)
+
+            for epoch_idx in range(num_epochs_run):
+                loss_epoch     = loss_list[epoch_idx]      if epoch_idx < len(loss_list)     else None
+                acc_epoch      = acc_list[epoch_idx]       if epoch_idx < len(acc_list)      else None
+                val_loss_epoch = val_loss_list[epoch_idx]  if epoch_idx < len(val_loss_list) else None
+                val_acc_epoch  = val_acc_list[epoch_idx]   if epoch_idx < len(val_acc_list)  else None
+
+                line = (
+                    f"Epoch {epoch_idx+1}: "
+                    f"loss={loss_epoch:.4f} "     if loss_epoch is not None else f"Epoch {epoch_idx+1}: loss=N/A "
+                )
+                line += (
+                    f"acc={acc_epoch:.4f} "       if acc_epoch is not None else "acc=N/A "
+                )
+                line += (
+                    f"val_loss={val_loss_epoch:.4f} " if val_loss_epoch is not None else "val_loss=N/A "
+                )
+                line += (
+                    f"val_acc={val_acc_epoch:.4f} "   if val_acc_epoch is not None else "val_acc=N/A "
+                )
+
+                if lr_history is not None and epoch_idx < len(lr_history):
+                    line += f"lr={lr_history[epoch_idx]:.6f}"
+
+                f.write(line + "\n")
+
+        print(f"Histórico salvo em {out_path}")
+
+    def save(self, out_dir: str = "trained_model"):
+        """
+        Salva:
+        - o modelo treinado (.keras)
+        - a lista de classes (classes.txt)
+        Isso é importante porque o avaliador/teste precisa saber
+        qual índice corresponde a qual classe.
+        """
+        print("Saving training and validation results...")
+        self._save_results()
         os.makedirs(out_dir, exist_ok=True)
 
-        test_ds = self._make_dataset(self.X_test, self.y_test)
+        model_path = os.path.join(out_dir, "model.keras")
+        self.model.save(model_path)
 
-        y_prob = self.model.predict(test_ds)
-        y_pred = np.argmax(y_prob, axis=1)
-        y_true = self.y_test.copy()
+        classes_path = os.path.join(out_dir, "classes.txt")
+        with open(classes_path, "w", encoding="utf-8") as f:
+            for cls in self.class_names:
+                f.write(cls + "\n")
 
-        acc = accuracy_score(y_true, y_pred)
-        prec, rec, f1, _ = precision_recall_fscore_support(
-            y_true, y_pred, average="weighted", zero_division=0
-        )
-        mcc = matthews_corrcoef(y_true, y_pred)
-        kappa = cohen_kappa_score(y_true, y_pred)
+        print(f"Modelo salvo em: {model_path}")
+        print(f"Classes salvas em: {classes_path}")
 
-        print("=== MÉTRICAS GERAIS (TESTE) ===")
-        print(f"Acurácia:  {acc:.4f}")
-        print(f"Precisão:  {prec:.4f}")
-        print(f"Recall:    {rec:.4f}")
-        print(f"F1-Score:  {f1:.4f}")
-        print(f"MCC:       {mcc:.4f}")
-        print(f"Kappa:     {kappa:.4f}")
-
-        cm = confusion_matrix(y_true, y_pred)
-        print("Matriz de Confusão:")
-        print(cm)
-
-        plt.figure(figsize=(6,6))
-        plt.imshow(cm, interpolation="nearest")
-        plt.title("Matriz de Confusão (Teste)")
-        plt.colorbar()
-        tick_marks = np.arange(len(self.class_names))
-        plt.xticks(tick_marks, self.class_names, rotation=45, ha="right")
-        plt.yticks(tick_marks, self.class_names)
-        plt.xlabel("Predito")
-        plt.ylabel("Real")
-        plt.tight_layout()
-        cm_path = os.path.join(out_dir, "confusion_matrix_test.png")
-        plt.savefig(cm_path, dpi=200)
-        plt.close()
-
-        y_true_onehot = tf.keras.utils.to_categorical(
-            y_true,
-            num_classes=len(self.class_names)
-        )
-
-        plt.figure(figsize=(6,6))
-        for i, cls_name in enumerate(self.class_names):
-            fpr, tpr, _ = roc_curve(y_true_onehot[:, i], y_prob[:, i])
-            roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, label=f"{cls_name} (AUC={roc_auc:.2f})")
-        plt.plot([0,1],[0,1],"k--",label="Aleatório")
-        plt.xlabel("Falso Positivo")
-        plt.ylabel("Verdadeiro Positivo (Recall)")
-        plt.legend(loc="lower right")
-        plt.title("Curvas ROC por classe (Teste)")
-        plt.tight_layout()
-        roc_path = os.path.join(out_dir, "roc_curves_test.png")
-        plt.savefig(roc_path, dpi=200)
-        plt.close()
-
-        feature_extractor = tf.keras.Model(
-            inputs=self.model.input,
-            outputs=self.model.layers[-3].output 
-        )
-
-        X_test_preproc = (self.X_test * 2.0) - 1.0  
-        feats = feature_extractor.predict(
-            X_test_preproc,
-            batch_size=self.batch_size
-        )
-
-        tsne = TSNE(
-            n_components=2,
-            learning_rate="auto",
-            init="random",
-            perplexity=30,
-            random_state=self.seed
-        )
-        feats_2d = tsne.fit_transform(feats)
-
-        plt.figure(figsize=(6,6))
-        for i, cls_name in enumerate(self.class_names):
-            idxs = np.where(y_true == i)[0]
-            plt.scatter(
-                feats_2d[idxs, 0],
-                feats_2d[idxs, 1],
-                alpha=0.7,
-                label=cls_name,
-                s=20
-            )
-        plt.title("t-SNE dos embeddings (Teste)")
-        plt.legend(loc="best", fontsize=8)
-        plt.tight_layout()
-        tsne_path = os.path.join(out_dir, "tsne_embeddings_test.png")
-        plt.savefig(tsne_path, dpi=200)
-        plt.close()
-
-        metrics_path = os.path.join(out_dir, "metrics_test_first_run.txt")
-        with open(metrics_path, "w", encoding="utf-8") as f:
-            f.write("=== MÉTRICAS GERAIS (TESTE) ===\n")
-            f.write(f"Acurácia:  {acc:.4f}\n")
-            f.write(f"Precisão:  {prec:.4f}\n")
-            f.write(f"Recall:    {rec:.4f}\n")
-            f.write(f"F1-Score:  {f1:.4f}\n")
-            f.write(f"MCC:       {mcc:.4f}\n")
-            f.write(f"Kappa:     {kappa:.4f}\n")
-            f.write("\nMatriz de confusão:\n")
-            f.write(str(cm))
-            f.write("\nClasses:\n")
-            f.write(str(self.class_names))
-
-        print(f"Relatórios salvos em {out_dir}")
 
 if __name__ == "__main__":
-    evaluator = BrainTumorEvaluator(
-        test_path="dataset/normalized/Testing",
-        model_dir="trained_model",        
+    trainer = BrainTumorTrainer(
+        train_path="dataset/normalized/Training", 
+        input_size=(224, 224),
         batch_size=32,
         seed=42
     )
 
-    evaluator.load_test_data() 
-    evaluator.load_model()    
+    trainer.load_data(val_size=0.2)
 
-    evaluator.evaluate(out_dir="results")
+    try:
+        print("Building model...")
+        trainer.build_model(
+            lr=1e-4,
+            train_base=False,
+            fine_tune=False
+        )
+
+        print("Initializing training...")
+        trainer.train(
+            patience=5,
+            min_lr=1e-6,
+            epochs=25
+        )
+
+        print("Saving...")
+        trainer.save(out_dir="trained_model")
+    except Exception as e:
+        print("An error occurred during training:", e)
+        traceback.print_exc()
+

@@ -184,12 +184,27 @@ def pre_process(file_path, path_clean, path_normalized, training: bool = False):
 		]
 
 		n_original = len(image_files)
+		do_augment = True
+		desired_total = TARGET_PER_CLASS - n_original
 
 		# Defines desired total number of images after augmentation
 		if training:
-			desired_total = max(n_original, TARGET_PER_CLASS)
+			if n_original > TARGET_PER_CLASS:
+				print(f"[DEBUG] classe {cls}: {n_original} originais, cortando para {TARGET_PER_CLASS}")
+				image_files = random.sample(image_files, TARGET_PER_CLASS)
+				n_original = len(image_files)
+				desired_total = 0
+				do_augment = False
+			elif n_original < TARGET_PER_CLASS:
+				print(f"[DEBUG] classe {cls}: {n_original} originais, vou aumentar até {TARGET_PER_CLASS}")
+				do_augment = True
+			else:
+				print(f"[DEBUG] classe {cls}: {n_original} originais, já está no alvo")
+				desired_total = 0
+				do_augment = False
 		else:
-			desired_total = n_original  # Avoid oversampling in testing set
+			desired_total = 0
+			do_augment = False
 
 		created = 0  # Count how many .npy files were created
 
@@ -233,10 +248,8 @@ def pre_process(file_path, path_clean, path_normalized, training: bool = False):
 			img_normalized_file_path = os.path.join(cls_path_normalized, norm_img_name + ".npy")
 			np.save(img_normalized_file_path, norm_img)
 
-			created += 1
-
 			# Generates and saves image augmentations
-			if training and created<desired_total:
+			if training and created<desired_total and do_augment:
 				remaining = desired_total - created
 				n_aug_this = min(AUG_PER_IMAGE, remaining)
 

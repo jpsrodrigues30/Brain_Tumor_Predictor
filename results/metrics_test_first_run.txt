@@ -1,0 +1,15 @@
+=== MÉTRICAS GERAIS (TESTE) ===
+Acurácia:  0.8879
+Precisão:  0.8899
+Recall:    0.8879
+F1-Score:  0.8874
+MCC:       0.8503
+Kappa:     0.8495
+
+Matriz de confusão:
+[[233  60   1   6]
+ [ 14 253  16  23]
+ [  5   5 394   1]
+ [  5  10   1 284]]
+Classes:
+['glioma', 'meningioma', 'notumor', 'pituitary']
