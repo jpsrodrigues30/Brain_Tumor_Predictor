@@ -3,6 +3,8 @@
 João Paulo de Souza Rodrigues
 21.01809-0
 
+Link do Github: https://github.com/jpsrodrigues30/Brain_Tumor_Predictor
+
 Este repositório contém um pipeline completo para **classificação de tumores cerebrais em imagens de ressonância magnética (RM)** utilizando **deep learning** com **MobileNetV2** e **transfer learning**.
 
 **Para uma documentação mais detalhada, consulte o relatório `Trabalho_Final_IA_CD_Aplicadas_a_Saude.docx`.**
